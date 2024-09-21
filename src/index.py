@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
 import logging
+import threading
 from flask import Flask, jsonify, render_template, request
 import yaml
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import mail
 import table
 import mycredential
+
 
 # Load configuration
 with open('conf/conf.yaml', 'r') as file:
@@ -93,6 +96,15 @@ def set_token():
     return jsonify(code=0, msg="ok")
 
 
+@app.route('/api/mailhelper/refresh', methods=['GET'])
+def manual_refresh():
+    mycredential.refresh_credentials()
+    return jsonify(code=0, msg="Refresh attempt completed")
+
 if __name__ == "__main__":
     mail.init_service_or_wait_async()
+    # Set up scheduler for periodic refresh
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(mycredential.refresh_credentials, 'interval', minutes=5)
+    scheduler.start()
     app.run(debug=True)

@@ -15,7 +15,7 @@ client: lark.Client = lark.Client.builder() \
     .app_id(config['lark']['app_id']) \
     .app_secret(config['lark']['app_secret']) \
     .domain(lark.FEISHU_DOMAIN) \
-    .timeout(3) \
+    .timeout(30) \
     .log_level(lark.LogLevel.DEBUG) \
     .build()
 

@@ -1,13 +1,17 @@
 from threading import Thread
 import threading
 from flask import Flask, request, jsonify
+import httplib2
 import credential
 import logging
 import yaml
+from oauth2client.client import OAuth2Credentials
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
-
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(threadName)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+)
 from queue import Queue
 
 # Load configuration
@@ -21,21 +25,56 @@ my_user_id = config['gmail']['user_id']
 my_credentials = None
 auth_url = None
 
-lock = threading.Lock()
+lock = threading.RLock()
+
+def refresh_credentials():
+    global my_credentials
+    logging.info("Refreshing credentials...")
+    with lock:
+        logging.info("Lock acquired.")
+        if my_credentials is not None and my_credentials.access_token_expired:
+            try:
+                logging.info("Access token expired. Refreshing...")
+                http = httplib2.Http()
+                my_credentials.refresh(http)
+                # Store the refreshed credentials
+                credential.store_credentials(my_user_id, my_credentials)
+                logging.info("Credentials refreshed successfully.")
+            except Exception as e:
+                logging.error(f"Error refreshing credentials: {e}")
+                my_credentials = None
+                global auth_url
+                auth_url = None
 
 def get_credentials():
+    logging.info("Getting credentials...")
+    global my_credentials
+    with lock:
+        if my_credentials is None:
+            logging.info("Credentials not found. Trying to get credentials from store...")
+            my_credentials = credential.get_stored_credentials(my_user_id)
+        if my_credentials is not None and my_credentials.access_token_expired:
+            logging.info('Credentials expired. Refreshing...')
+            refresh_credentials()
     return my_credentials
 
-def get_credentials_or_wait():
+def get_credentials_or_wait(): 
+    logging.info("Getting credentials or wait...")
     global my_credentials, auth_url
     with lock:
+        if my_credentials is None:
+            logging.info("Credentials not found. Trying to get credentials from store...")
+            my_credentials = credential.get_stored_credentials(my_user_id)
+        
         if my_credentials is not None:
-            return my_credentials
-            
-        # Implement the initialization of mail integration here
-        my_credentials = credential.get_stored_credentials(my_user_id)
-        if my_credentials is not None and not my_credentials.access_token_expired:
-            return my_credentials
+            if my_credentials.access_token_expired:
+                logging.info('Credentials expired. Refreshing...')
+                refresh_credentials()
+            if my_credentials is not None:
+                logging.info("Credentials found and valid.")
+                return my_credentials
+        
+        # If credentials are still None or refresh failed, proceed with the original flow
         auth_url = credential.get_authorization_url(my_mail_address, "")
         logging.info(f'auth_url: {auth_url}')
         auth_code = codeq.get()
@@ -80,8 +119,6 @@ def input_token_from_stdin():
     codeq.put(input())
 
 if __name__ == "__main__":
-    
-    
     t = Thread(target=input_token_from_stdin)
     t.start()
     t2 = Thread(target=get_credentials_or_wait)
