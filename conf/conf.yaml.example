@@ -1,0 +1,17 @@
+redis:
+    host: your_redis_host
+    port: your_redis_port
+    password: your_redis_password
+    username: your_redis_username
+
+lark:
+    app_id: your_lark_app_id
+    app_secret: your_lark_app_secret
+    base_id: your_base_id
+    table_id: your_table_id
+    app_token: your_app_token
+
+gmail:
+    email_address: your_email@gmail.com
+    user_id: your_user_id
+    bill_label: "账单/信用卡消费账单"

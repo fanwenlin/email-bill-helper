@@ -1,0 +1,7 @@
+__pycache__
+.DS_Store
+src/__pycache__
+*.yaml
+*.json
+conf/cs.json
+conf/conf.yaml
