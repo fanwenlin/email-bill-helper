@@ -5,3 +5,4 @@ src/__pycache__
 *.json
 conf/cs.json
 conf/conf.yaml
+classify/

@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import logging
-import threading
 from flask import Flask, jsonify, render_template, request
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -18,6 +17,19 @@ mycredential.get_credentials_or_wait_async()
 
 app = Flask(__name__, template_folder='../static', static_folder='../static')
 
+# Set up scheduler for periodic refresh
+scheduler = BackgroundScheduler()
+scheduler.add_job(mycredential.refresh_credentials, 'interval', minutes=30)
+
+# Add new scheduler for automatic crawling
+def auto_crawl():
+    label_name = config['gmail']['bill_label']
+    end_time = datetime.now()
+    start_time = end_time - timedelta(days=7)
+    try:
+        mail.crawl_mail(label_name, start_time, end_time)
+    except Exception as e:
+        logging.exception(f'Auto crawl exception: {e}')
 
 @app.route('/')
 def index():
@@ -106,5 +118,8 @@ if __name__ == "__main__":
     # Set up scheduler for periodic refresh
     scheduler = BackgroundScheduler()
     scheduler.add_job(mycredential.refresh_credentials, 'interval', minutes=5)
+
+    scheduler.add_job(auto_crawl, 'interval', hours=24)  # Run once a day
+
     scheduler.start()
     app.run(debug=True)

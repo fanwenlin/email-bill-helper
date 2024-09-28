@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 
-from table import search_raw_items, update_bill_items
+from src.table import search_raw_items, update_bill_items
 import lark_oapi.api.bitable.v1 as bitable
 
 # Constants
-START_DATE = datetime(2024, 1, 1)
-END_DATE = datetime(2024, 3, 31)
+START_DATE = datetime(2024, 6, 12)
+END_DATE = datetime(2024, 6, 13)
 BATCH_SIZE = 50
 
 def process_record(item: bitable.AppTableRecord) -> dict:

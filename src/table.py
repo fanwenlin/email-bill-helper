@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import hashlib
+import logging
 import time
 from typing import List, Optional
 
@@ -58,13 +60,49 @@ class BillItem(object):
             and (self.bill_detail == other.bill_detail)
 
     def __hash__(self):
-        return hash((self.bill_value_cent, self.bill_time.timestamp(), self.bill_detail))
+        hash_input = f"{self.bill_value_cent}_{self.bill_time.timestamp()}_{self.bill_detail}"
+        return hashlib.md5(hash_input.encode('utf-8')).hexdigest()
 
+
+def search_records_by_unique_ids(unique_ids):
+    filter_conditions = bitable.FilterInfoBuilder().conjunction('or').\
+        conditions([
+            bitable.ConditionBuilder().field_name('unique_id').operator('is').value([f'{uid}']).build() for uid in unique_ids
+            ]).\
+        build()
+    
+    req = bitable.SearchAppTableRecordRequestBuilder().\
+        table_id(dest_table_id).\
+        app_token(token).\
+        request_body(
+            bitable.SearchAppTableRecordRequestBody.builder()
+            .filter(filter_conditions)
+            .build()) \
+        .build()
+
+    resp = client.bitable.v1.app_table_record.search(req)
+    
+    if resp.data.total == 0:
+        return [] 
+    return [record.fields for record in resp.data.items]
 
 def save_bill_items(items):
+    # Get unique_ids of new items
+    new_unique_ids = [item.unique_id for item in items]
+    
+    # Search for existing records
+    existing_records = search_records_by_unique_ids(new_unique_ids)
+    existing_unique_ids = set(record['unique_id'] for record in existing_records)
+    
+    # Filter out items that already exist
+    new_items = [item for item in items if item.unique_id not in existing_unique_ids]
+    
+    if not new_items:
+        logging.info("No new items to save")
+        return "No new items to save"
 
     records = []
-    for item in items:
+    for item in new_items:
         record = {
             "RMB金额": float(item.bill_value_cent) / 100,
             "一级分类": "待归类",
@@ -75,6 +113,7 @@ def save_bill_items(items):
         }
         records.append(record)
 
+    logging.info(f"Saving {len(records)} new items")
     return save_bill_items_raw(records)
 
 
