@@ -2,7 +2,7 @@
 
 This project is a Flask-based web application that helps manage and process email bills, specifically credit card consumption bills. It integrates with the Lark (Feishu) Bitable API for data storage and retrieval.
 
-English | [中文](README_CN.md)
+English | [中文](README_zh.md)
 
 ---
 
